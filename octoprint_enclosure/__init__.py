@@ -1002,9 +1002,6 @@ class EnclosurePlugin(octoprint.plugin.StartupPlugin, octoprint.plugin.TemplateP
                 if sensor['temp_sensor_type'] in ["11", "22", "2302"]:
                     temp, hum = self.read_dht_temp(sensor['temp_sensor_type'], sensor['gpio_pin'])
                     airquality = 0
-                elif sensor['temp_sensor_type'] == "20":
-                    temp, hum = self.read_dht20_temp(sensor['temp_sensor_address'], sensor['temp_sensor_i2cbus'])
-                    airquality = 0
                 elif sensor['temp_sensor_type'] == "18b20":
                     temp = self.read_18b20_temp(sensor['ds18b20_serial'])
                     hum = 0
@@ -1017,8 +1014,8 @@ class EnclosurePlugin(octoprint.plugin.StartupPlugin, octoprint.plugin.TemplateP
                 elif sensor['temp_sensor_type'] == "am2320":
                     temp, hum = self.read_am2320_temp() # sensor has fixed address
                     airquality = 0
-                elif sensor['temp_sensor_type'] == "aht10":
-                    temp, hum = self.read_aht10_temp(sensor['temp_sensor_address'], sensor['temp_sensor_i2cbus'])
+                elif sensor['temp_sensor_type'] == "ahtx0":
+                    temp, hum = self.read_ahtx0_temp(sensor['temp_sensor_address'], sensor['temp_sensor_i2cbus'])
                     airquality = 0
                 elif sensor['temp_sensor_type'] == "rpi":
                     temp = self.read_rpi_temp() # rpi CPU Temp
@@ -1157,28 +1154,31 @@ class EnclosurePlugin(octoprint.plugin.StartupPlugin, octoprint.plugin.TemplateP
                 "Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
             self.log_error(ex)
             return (0, 0)
-
-    def read_dht20_temp(self, address, i2cbus):
+    
+    def read_ahtx0_temp(self, address, i2cbus):
         try:
-            script = os.path.dirname(os.path.realpath(__file__)) + "/DHT20.py "
+            script = os.path.dirname(os.path.realpath(__file__)) + "/AHTx0.py"
+            cmd = [sys.executable, script, str(address), str(i2cbus)]
             if self._settings.get(["use_sudo"]):
-                sudo_str = "sudo "
-            else:
-                sudo_str = ""
-            cmd = sudo_str + "python " + script + str(address) + " " + str(i2cbus)
-            if  self._settings.get(["debug_temperature_log"]) is True:
-                self._logger.debug("Temperature DHT20 cmd: %s", cmd)
-            stdout = (Popen(cmd, shell=True, stdout=PIPE).stdout).read()
-            if  self._settings.get(["debug_temperature_log"]) is True:
-                self._logger.debug("DHT20 result: %s", stdout)
-            temp, hum = stdout.decode("utf-8").split("|")
+                cmd.insert(0, "sudo")
+
+            if self._settings.get(["debug_temperature_log"]):
+                self._logger.debug("Temperature AHTx0 cmd: %s", cmd)
+
+            stdout, stderr = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+
+            if self._settings.get(["debug_temperature_log"]):
+                log_method = self._logger.error if stderr else self._logger.debug
+                log_method("AHTx0 result: %s", stdout)
+
+            temp, hum = stdout.split("|")
             return (self.to_float(temp.strip()), self.to_float(hum.strip()))
+
         except Exception as ex:
-            self._logger.info(
-                "Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
+            self._logger.info("Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
             self.log_error(ex)
             return (0, 0)
-
+    
     def read_bme280_temp(self, address):
         try:
             script = os.path.dirname(os.path.realpath(__file__)) + "/BME280.py"
@@ -1250,34 +1250,7 @@ class EnclosurePlugin(octoprint.plugin.StartupPlugin, octoprint.plugin.TemplateP
                 "Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
             self.log_error(ex)
             return (0, 0)
-
-    def read_aht10_temp(self, address, i2cbus):
-        try:
-            script = os.path.dirname(os.path.realpath(__file__)) + "/AHT10.py"
-            cmd = [sys.executable, script, str(address), str(i2cbus)]
-            if self._settings.get(["use_sudo"]):
-                 cmd.insert(0, "sudo")
-            if  self._settings.get(["debug_temperature_log"]) is True:
-                self._logger.debug("Temperature AHT10 cmd: %s", cmd)
-            self._logger.debug(cmd)
-            stdout = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-            output, errors = stdout.communicate()
-            if self._settings.get(["debug_temperature_log"]) is True:
-                if len(errors) > 0:
-                    self._logger.error("AHT10 error: %s", errors)
-                else:
-                    self._logger.debug("AHT10 result: %s", output)
-            self._logger.debug(output + " " + errors)
-            temp, hum = output.split("|")
-            print (temp + " , " + hum )
-            return (self.to_float(temp.strip()), self.to_float(hum.strip()))
-        except Exception as ex:
-            print(ex)
-            self._logger.info(
-                "Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
-            self.log_error(ex)
-            return (0, 0)
-
+    
     def read_rpi_temp(self):
         try:
             pitemp = PiTemp()
