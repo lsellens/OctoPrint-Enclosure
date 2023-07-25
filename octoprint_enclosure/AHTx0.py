@@ -20,9 +20,9 @@ class AHTx0:
         self.cmd_soft_reset()
         
         # Check for calibration, if not done then do and wait 10 ms
-        if not self.status_calibrated():
+        if not self.status_calibrated:
             self.cmd_initialize()
-            while not self.status_calibrated():
+            while not self.status_calibrated:
                 time.sleep(0.01)
     
     def cmd_soft_reset(self):
@@ -68,7 +68,7 @@ class AHTx0:
         self.cmd_measure()
         
         # Check if busy bit = 0, otherwise wait 80 ms and retry
-        while self.status_busy() == 1:
+        while self.status_busy == 1:
             time.sleep(0.08) # Wait 80 ms
         
         # Read data and return it
