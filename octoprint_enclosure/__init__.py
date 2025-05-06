@@ -1289,33 +1289,6 @@ class EnclosurePlugin(octoprint.plugin.StartupPlugin, octoprint.plugin.TemplateP
             self.log_error(ex)
             return (0, 0)
 
-    def read_aht10_temp(self, address, i2cbus):
-        try:
-            script = os.path.dirname(os.path.realpath(__file__)) + "/AHT10.py"
-            cmd = [sys.executable, script, str(address), str(i2cbus)]
-            if self._settings.get(["use_sudo"]):
-                 cmd.insert(0, "sudo")
-            if  self._settings.get(["debug_temperature_log"]) is True:
-                self._logger.debug("Temperature AHT10 cmd: %s", cmd)
-            self._logger.debug(cmd)
-            stdout = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-            output, errors = stdout.communicate()
-            if self._settings.get(["debug_temperature_log"]) is True:
-                if len(errors) > 0:
-                    self._logger.error("AHT10 error: %s", errors)
-                else:
-                    self._logger.debug("AHT10 result: %s", output)
-            self._logger.debug(output + " " + errors)
-            temp, hum = output.split("|")
-            print (temp + " , " + hum )
-            return (self.to_float(temp.strip()), self.to_float(hum.strip()))
-        except Exception as ex:
-            print(ex)
-            self._logger.info(
-                "Failed to execute python scripts, try disabling use SUDO on advanced section of the plugin.")
-            self.log_error(ex)
-            return (0, 0)
-
     def read_rpi_temp(self):
         try:
             pitemp = PiTemp()
